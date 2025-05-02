@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: awxpass
       POSTGRES_DB: awx
     ports:
-      - "5433:5432"  # Изменён внешний порт с 5432 на 5433 (внутренний остаётся 5432)
+      - "5433:5432"  # Внешний порт 5433, внутренний 5432
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -27,8 +27,8 @@ services:
     ports:
       - "8052:8052"
     environment:
-      AWX_POSTGRES_HOST: postgres
-      AWX_POSTGRES_PORT: 5432  # Внутри Docker-сети контейнеры общаются через стандартный порт 5432
+      AWX_POSTGRES_HOST: postgres  # Имя сервиса в Docker-сети
+      AWX_POSTGRES_PORT: 5432      # Внутренний порт (не меняется!)
       AWX_POSTGRES_USER: awx
       AWX_POSTGRES_PASSWORD: awxpass
       AWX_POSTGRES_DB: awx
@@ -49,7 +49,7 @@ services:
       - redis
     environment:
       AWX_POSTGRES_HOST: postgres
-      AWX_POSTGRES_PORT: 5432  # Внутри сети Docker порт остаётся 5432
+      AWX_POSTGRES_PORT: 5432      # Внутренний порт (не меняется!)
       AWX_POSTGRES_USER: awx
       AWX_POSTGRES_PASSWORD: awxpass
       AWX_POSTGRES_DB: awx
