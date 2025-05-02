@@ -1,9 +1,46 @@
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-  - github.com/ansible/awx-operator/config/default?ref=2.19.1
-  - awx-demo.yml
-images:
-  - name: quay.io/ansible/awx-operator
-    newTag: 2.19.1
-namespace: awx
+version: '3.8'
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: awx
+      POSTGRES_PASSWORD: awxpass
+      POSTGRES_DB: awx
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+
+  awx-web:
+    image: ghcr.io/ansible/awx:latest
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "8052:8052"
+    environment:
+      AWX_POSTGRES_HOST: postgres
+      AWX_POSTGRES_PORT: 5432
+      AWX_POSTGRES_USER: awx
+      AWX_POSTGRES_PASSWORD: awxpass
+      AWX_POSTGRES_DB: awx
+      AWX_REDIS_HOST: redis
+      AWX_ADMIN_USER: admin
+      AWX_ADMIN_PASSWORD: password
+
+  awx-task:
+    image: ghcr.io/ansible/awx:latest
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      AWX_POSTGRES_HOST: postgres
+      AWX_POSTGRES_PORT: 5432
+      AWX_POSTGRES_USER: awx
+      AWX_POSTGRES_PASSWORD: awxpass
+      AWX_POSTGRES_DB: awx
+      AWX_REDIS_HOST: redis
+
+volumes:
+  postgres_data:
