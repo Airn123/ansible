@@ -1,0 +1,59 @@
+version: '3'
+services:
+  postgres:
+    image: postgres:13
+    container_name: awx-postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: awx
+      POSTGRES_PASSWORD: awxpass
+      POSTGRES_DB: awx
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    container_name: awx-redis
+    restart: unless-stopped
+
+  awx-web:
+    image: ghcr.io/ansible/awx-web:latest
+    container_name: awx-web
+    depends_on:
+      - redis
+      - postgres
+    ports:
+      - "8052:8052"
+    environment:
+      AWX_POSTGRES_HOST: postgres
+      AWX_POSTGRES_PORT: 5432
+      AWX_POSTGRES_USER: awx
+      AWX_POSTGRES_PASSWORD: awxpass
+      AWX_POSTGRES_DATABASE: awx
+      AWX_REDIS_HOST: redis
+      AWX_REDIS_PORT: 6379
+    volumes:
+      - awx_projects:/var/lib/awx/projects
+    restart: unless-stopped
+
+  awx-task:
+    image: ghcr.io/ansible/awx-task:latest
+    container_name: awx-task
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      AWX_POSTGRES_HOST: postgres
+      AWX_POSTGRES_PORT: 5432
+      AWX_POSTGRES_USER: awx
+      AWX_POSTGRES_PASSWORD: awxpass
+      AWX_POSTGRES_DATABASE: awx
+      AWX_REDIS_HOST: redis
+      AWX_REDIS_PORT: 6379
+    volumes:
+      - awx_projects:/var/lib/awx/projects
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  awx_projects:
