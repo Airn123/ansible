@@ -1,44 +1,9 @@
-version: '3.8'
-services:
-  redis:
-    image: redis:7
-    container_name: awx-redis
-    restart: unless-stopped
-
-  awx-web:
-    image: ghcr.io/ansible/awx:latest
-    container_name: awx-web
-    depends_on:
-      - redis
-    ports:
-      - "8052:8052"
-    environment:
-      AWX_ADMIN_USER: admin
-      AWX_ADMIN_PASSWORD: password
-      # Используем SQLite вместо PostgreSQL
-      AWX_DB_HOST: ""
-      AWX_DB_PORT: ""
-      AWX_DB_USER: ""
-      AWX_DB_PASSWORD: ""
-      AWX_DB_NAME: /var/lib/awx/awx.sqlite3
-    volumes:
-      - awx_data:/var/lib/awx
-    restart: unless-stopped
-
-  awx-task:
-    image: ghcr.io/ansible/awx:latest
-    container_name: awx-task
-    depends_on:
-      - redis
-    environment:
-      AWX_DB_HOST: ""
-      AWX_DB_PORT: ""
-      AWX_DB_USER: ""
-      AWX_DB_PASSWORD: ""
-      AWX_DB_NAME: /var/lib/awx/awx.sqlite3
-    volumes:
-      - awx_data:/var/lib/awx
-    restart: unless-stopped
-
-volumes:
-  awx_data:
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - github.com/ansible/awx-operator/config/default?ref=2.19.1
+  - awx-demo.yml
+images:
+  - name: quay.io/ansible/awx-operator
+    newTag: 2.19.1
+namespace: awx
