@@ -2,35 +2,47 @@ version: '3.8'
 services:
   postgres:
     image: postgres:13
+    container_name: awx-postgres
     environment:
       POSTGRES_USER: awx
       POSTGRES_PASSWORD: awxpass
       POSTGRES_DB: awx
+    ports:
+      - "5433:5432"  # Меняем порт PostgreSQL с 5432 на 5433 (чтобы не конфликтовал с Zabbix)
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
 
   redis:
     image: redis:7
+    container_name: awx-redis
+    restart: unless-stopped
 
   awx-web:
     image: ghcr.io/ansible/awx:latest
+    container_name: awx-web
     depends_on:
       - postgres
       - redis
     ports:
-      - "8052:8052"
+      - "8053:8052"  # Меняем внешний порт с 8052 на 8053 (если 8052 занят)
     environment:
       AWX_POSTGRES_HOST: postgres
-      AWX_POSTGRES_PORT: 5432
+      AWX_POSTGRES_PORT: 5432  # Внутри Docker-сети порт остаётся 5432
       AWX_POSTGRES_USER: awx
       AWX_POSTGRES_PASSWORD: awxpass
       AWX_POSTGRES_DB: awx
       AWX_REDIS_HOST: redis
+      AWX_REDIS_PORT: 6379
       AWX_ADMIN_USER: admin
       AWX_ADMIN_PASSWORD: password
+    volumes:
+      - awx_projects:/var/lib/awx/projects
+    restart: unless-stopped
 
   awx-task:
     image: ghcr.io/ansible/awx:latest
+    container_name: awx-task
     depends_on:
       - postgres
       - redis
@@ -41,6 +53,11 @@ services:
       AWX_POSTGRES_PASSWORD: awxpass
       AWX_POSTGRES_DB: awx
       AWX_REDIS_HOST: redis
+      AWX_REDIS_PORT: 6379
+    volumes:
+      - awx_projects:/var/lib/awx/projects
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+  awx_projects:
