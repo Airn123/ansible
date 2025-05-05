@@ -1,76 +1,39 @@
-version: '3'
+version: '3.8'
 services:
-  postgres:
-    image: postgres:13
-    container_name: awx-postgres
+  semaphore:
+    image: semaphoreui/semaphore:latest
+    container_name: semaphore
     environment:
-      POSTGRES_USER: awx
-      POSTGRES_PASSWORD: awxpass
-      POSTGRES_DB: awx
+      - SEMAPHORE_DB_HOST=db
+      - SEMAPHORE_DB_PORT=5432
+      - SEMAPHORE_DB_USER=semaphore
+      - SEMAPHORE_DB_PASS=your_db_password  # Замените!
+      - SEMAPHORE_DB_NAME=semaphore
+      - SEMAPHORE_DB_DIALECT=postgres
+      - SEMAPHORE_ADMIN_PASSWORD=admin123    # Замените!
+      - SEMAPHORE_ADMIN_NAME=Admin
+      - SEMAPHORE_ADMIN_EMAIL=admin@example.com
+      - SEMAPHORE_PORT=5000                  # Меняем порт на 5000
     volumes:
-      - awx_postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-    networks:
-      - awx_network
-
-  redis:
-    image: redis:7
-    container_name: awx-redis
-    restart: unless-stopped
-    networks:
-      - awx_network
-
-  awx-web:
-    image: ghcr.io/ansible/awx:latest
-    container_name: awx-web
-    depends_on:
-      - postgres
-      - redis
-    environment:
-      AWX_ADMIN_USER: admin
-      AWX_ADMIN_PASSWORD: your_strong_password  # Замените на свой!
-      DATABASE_HOST: postgres
-      DATABASE_PORT: 5432
-      DATABASE_USER: awx
-      DATABASE_PASSWORD: awxpass
-      DATABASE_NAME: awx
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-    volumes:
-      - awx_projects:/var/lib/awx/projects
+      - semaphore_data:/etc/semaphore
+      - /path/to/ansible:/etc/ansible       # Монтируем каталог с playbooks
     ports:
-      - "8052:8052"  # AWX Web UI (замените на свободный, если занят)
-      - "8013:8013"  # AWX Receiver (опционально)
-    restart: unless-stopped
-    networks:
-      - awx_network
-
-  awx-task:
-    image: ghcr.io/ansible/awx:latest
-    container_name: awx-task
+      - "5000:5000"                         # Пробрасываем порт 5000
     depends_on:
-      - postgres
-      - redis
-    environment:
-      AWX_ADMIN_USER: admin
-      AWX_ADMIN_PASSWORD: your_strong_password  # Должен совпадать с awx-web!
-      DATABASE_HOST: postgres
-      DATABASE_PORT: 5432
-      DATABASE_USER: awx
-      DATABASE_PASSWORD: awxpass
-      DATABASE_NAME: awx
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-    volumes:
-      - awx_projects:/var/lib/awx/projects
+      - db
     restart: unless-stopped
-    networks:
-      - awx_network
+
+  db:
+    image: postgres:15-alpine
+    container_name: semaphore_db
+    environment:
+      - POSTGRES_USER=semaphore
+      - POSTGRES_PASSWORD=your_db_password   # Должен совпадать с SEMAPHORE_DB_PASS
+      - POSTGRES_DB=semaphore
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
 
 volumes:
-  awx_postgres_data:
-  awx_projects:
-
-networks:
-  awx_network:
-    driver: bridge
+  semaphore_data:
+  postgres_data:
