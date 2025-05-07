@@ -1,6 +1,6 @@
 ---
 - name: Установить и настроить веб-сервер
-  hosts: webservers
+  hosts: all
   become: yes
 
   tasks:
