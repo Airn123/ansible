@@ -1,59 +1,48 @@
 ---
-- name: Deploy Nginx from GitHub repository
+- name: Deploy Nginx from GitHub
   hosts: all
   become: yes
   vars:
-    github_user: "Airn123"
-    github_repo: "ansible"
-    github_branch: "main"
-    temp_dir: "/tmp/nginx-config-{{ ansible_date_time.epoch }}"
+    repo_url: "https://github.com/Airn123/ansible.git"
+    config_file: "nginx.conf.j2"  # Файл в корне репозитория
 
   tasks:
-    # 1. Установка зависимостей
-    - name: Install required packages
+    # 1. Установка Nginx
+    - name: Install Nginx
       apt:
-        name: ["nginx", "git"]
-        state: present
+        name: nginx
+        state: latest
         update_cache: yes
 
-    # 2. Создание временной директории
-    - name: Create temporary directory
-      file:
-        path: "{{ temp_dir }}"
-        state: directory
-        mode: '0755'
+    # 2. Скачивание конфига напрямую с GitHub (Raw)
+    - name: Download nginx config
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/Airn123/ansible/main/{{ config_file }}"
+        dest: "/tmp/{{ config_file }}"
+        mode: '0644'
 
-    # 3. Клонирование репозитория
-    - name: Clone configuration repository
-      ansible.builtin.git:
-        repo: "https://github.com/{{ github_user }}/{{ github_repo }}.git"
-        dest: "{{ temp_dir }}"
-        version: "{{ github_branch }}"
-        force: yes
-
-    # 4. Проверка существования файлов
-    - name: Check if template exists
-      stat:
-        path: "{{ temp_dir }}/templates/nginx.conf.j2"
-      register: template_stat
-
-    # 5. Развертывание конфигурации
-    - name: Deploy nginx config
-      ansible.builtin.template:
-        src: "{{ temp_dir }}/templates/nginx.conf.j2"
+    # 3. Применение конфига
+    - name: Apply nginx configuration
+      ansible.builtin.copy:
+        src: "/tmp/{{ config_file }}"
         dest: "/etc/nginx/nginx.conf"
         owner: root
         group: root
         mode: '0644'
-      when: template_stat.stat.exists
       notify: restart nginx
 
-    # 6. Очистка временных файлов
-    - name: Clean up temporary files
+    # 4. Проверка конфигурации
+    - name: Validate nginx config
+      command: nginx -t
+      register: nginx_test
+      changed_when: false
+      notify: restart nginx
+
+    # 5. Очистка временного файла
+    - name: Cleanup temp file
       file:
-        path: "{{ temp_dir }}"
+        path: "/tmp/{{ config_file }}"
         state: absent
-      when: cleanup|default(true)
 
   handlers:
     - name: restart nginx
