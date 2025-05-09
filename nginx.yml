@@ -1,6 +1,6 @@
 ---
 - name: Deploy Nginx from GitHub repository
-  hosts: webservers
+  hosts: all
   become: yes
   vars:
     github_user: "Airn123"
