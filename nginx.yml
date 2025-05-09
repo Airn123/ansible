@@ -5,7 +5,8 @@
   vars:
     github_user: "Airn123"
     github_repo: "ansible"
-    github_branch: "main"  # или ваша ветка
+    github_branch: "main"
+    temp_dir: "/tmp/nginx-config-{{ ansible_date_time.epoch }}"
 
   tasks:
     # 1. Установка зависимостей
@@ -15,64 +16,47 @@
         state: present
         update_cache: yes
 
-    # 2. Клонирование репозитория с конфигами
+    # 2. Создание временной директории
+    - name: Create temporary directory
+      file:
+        path: "{{ temp_dir }}"
+        state: directory
+        mode: '0755'
+
+    # 3. Клонирование репозитория
     - name: Clone configuration repository
       ansible.builtin.git:
         repo: "https://github.com/{{ github_user }}/{{ github_repo }}.git"
-        dest: /tmp/nginx-config
+        dest: "{{ temp_dir }}"
         version: "{{ github_branch }}"
         force: yes
 
-    # 3. Копирование основных конфигов
-    - name: Deploy main nginx config
+    # 4. Проверка существования файлов
+    - name: Check if template exists
+      stat:
+        path: "{{ temp_dir }}/templates/nginx.conf.j2"
+      register: template_stat
+
+    # 5. Развертывание конфигурации
+    - name: Deploy nginx config
       ansible.builtin.template:
-        src: "/tmp/nginx-config/templates/nginx.conf.j2"
+        src: "{{ temp_dir }}/templates/nginx.conf.j2"
         dest: "/etc/nginx/nginx.conf"
         owner: root
         group: root
         mode: '0644'
+      when: template_stat.stat.exists
       notify: restart nginx
 
-    # 4. Копирование конфигов сайтов (если есть)
-    - name: Deploy site configurations
-      ansible.builtin.copy:
-        src: "/tmp/nginx-config/files/sites-available/"
-        dest: "/etc/nginx/sites-available"
-        owner: root
-        group: root
-        mode: '0644'
-        remote_src: yes
-      when: "'sites-available' in lookup('fileglob', '/tmp/nginx-config/files/sites-available/*')"
-      notify: reload nginx
-
-    # 5. Активация сайтов
-    - name: Enable sites
-      ansible.builtin.file:
-        src: "/etc/nginx/sites-available/{{ item }}"
-        dest: "/etc/nginx/sites-enabled/{{ item }}"
-        state: link
-      loop: "{{ lookup('fileglob', '/tmp/nginx-config/files/sites-available/*').split(',') | map('basename') | list }}"
-      when: "'sites-available' in lookup('fileglob', '/tmp/nginx-config/files/sites-available/*')"
-      notify: reload nginx
-
-    # 6. Развертывание статики (если есть)
-    - name: Deploy static content
-      ansible.builtin.copy:
-        src: "/tmp/nginx-config/files/html/"
-        dest: "/var/www/html"
-        owner: www-data
-        group: www-data
-        mode: '0755'
-        remote_src: yes
-      when: "'html' in lookup('fileglob', '/tmp/nginx-config/files/html/*')"
+    # 6. Очистка временных файлов
+    - name: Clean up temporary files
+      file:
+        path: "{{ temp_dir }}"
+        state: absent
+      when: cleanup|default(true)
 
   handlers:
     - name: restart nginx
       ansible.builtin.service:
         name: nginx
         state: restarted
-
-    - name: reload nginx
-      ansible.builtin.service:
-        name: nginx
-        state: reloaded
