@@ -1,0 +1,64 @@
+---
+- name: Deploy Nginx with config from GitHub
+  hosts: all
+  become: yes
+  vars:
+    github_raw_url: "https://raw.githubusercontent.com/Airn123/ansible/main/nginx.conf"
+
+  tasks:
+    # 1. Установка apache2
+    - name: Install apache2 package
+      apt:
+        name: apache2
+        state: present
+        update_cache: yes
+
+    # 2. Скачивание конфига напрямую с GitHub
+   # - name: Download nginx config from GitHub
+    #  ansible.builtin.get_url:
+    #    url: "{{ github_raw_url }}"
+    #    dest: /etc/nginx/nginx.conf
+     #   owner: root
+     #   group: root
+     #   mode: '0644'
+     #   force: yes
+     # register: config_download
+      #ignore_errors: yes
+
+    # 3. Альтернативный вариант если прямой URL не работает
+   # - name: Clone repo and copy config (fallback)
+  #    block:
+     #   - name: Clone repository
+      #    ansible.builtin.git:
+       #     repo: "https://github.com/Airn123/ansible.git"
+        #    dest: /tmp/nginx-config
+        #    version: main
+        #    force: yes
+#
+        #- name: Copy nginx config
+       #   ansible.builtin.copy:
+        #    src: "/tmp/nginx-config/nginx.conf"
+        #    dest: /etc/nginx/nginx.conf
+         #   owner: root
+         #   group: root
+         #   mode: '0644'
+         #   remote_src: yes
+
+     #   - name: Cleanup cloned repo
+       #   file:
+        #    path: /tmp/nginx-config
+        #    state: absent
+   #   when: config_download is failed
+
+    # 4. Проверка конфигурации
+  #  - name: Validate nginx configuration
+    #  command: nginx -t
+    #  register: nginx_test
+    #  changed_when: false
+    #  notify: restart nginx
+#
+#  handlers:
+  #  - name: restart nginx
+  #    ansible.builtin.service:
+   #     name: nginx
+  #      state: restarted
